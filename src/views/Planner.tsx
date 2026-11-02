@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { PalPicker } from '../components/Pickers'
+import { PalPicker, PassivePicker } from '../components/Pickers'
 import { type OwnedPal, useOwnedPals } from '../db'
 import { parentsOf, type Gender } from '../engine/gameData'
 import { flattenSteps, oneStepChildren, planAll, type OwnedRef, type PlanNode } from '../engine/pathfinder'
 import { genderSymbol, palName } from '../format'
+import { PassivePlan } from './PassivePlan'
 
 function parentLabel(node: PlanNode, byKey: Map<number, OwnedPal>, gender?: Gender): string {
   const name = palName(node.palId)
@@ -21,10 +22,11 @@ function neededGender(node: PlanNode, partner: PlanNode, fixed?: Gender): Gender
   return genders.has('M') ? 'F' : 'M'
 }
 
-/** Shortest species-breeding route from what you own to a target Pal. */
+/** Breeding routes from what you own to a target Pal, optionally with passives. */
 export function Planner() {
   const pals = useOwnedPals()
   const [target, setTarget] = useState<string>()
+  const [passives, setPassives] = useState<string[]>([])
 
   const refs: OwnedRef[] = useMemo(() => pals.map((p) => ({ key: p.id, palId: p.palId, gender: p.gender })), [pals])
   const byKey = useMemo(() => new Map(pals.map((p) => [p.id, p])), [pals])
@@ -38,8 +40,12 @@ export function Planner() {
     <div>
       <label>Target Pal</label>
       <PalPicker value={target} onChange={setTarget} placeholder="Which Pal do you want to breed?" />
+      <label>Passives it should have (optional, up to 4)</label>
+      <PassivePicker value={passives} onChange={setPassives} />
 
-      {target && !plan && (
+      {target && passives.length > 0 && <PassivePlan target={target} passives={passives} pals={pals} byKey={byKey} />}
+
+      {target && passives.length === 0 && !plan && (
         <div className="result">
           <p className="warn">You can't reach {palName(target)} from your current pals.</p>
           <p className="muted">These pairs produce it. Catching one of these parents is a good start:</p>
@@ -57,9 +63,9 @@ export function Planner() {
         </div>
       )}
 
-      {plan && plan.kind === 'owned' && <p className="result">You already own a {palName(plan.palId)}.</p>}
+      {passives.length === 0 && plan && plan.kind === 'owned' && <p className="result">You already own a {palName(plan.palId)}.</p>}
 
-      {plan && steps.length > 0 && (
+      {passives.length === 0 && plan && steps.length > 0 && (
         <div className="result">
           <h3>
             {palName(target!)} in {steps.length} breeding step{steps.length === 1 ? '' : 's'}
@@ -78,7 +84,7 @@ export function Planner() {
             ))}
           </ol>
           <p className="muted">
-            Species route only. Use the Breed tab to check passive odds for each pairing.
+            Species route only. Add passives above to plan for those too.
           </p>
         </div>
       )}

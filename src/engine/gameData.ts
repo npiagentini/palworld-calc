@@ -57,6 +57,19 @@ function indexOf(palId: string): number {
   return i
 }
 
+export function palIndexOf(palId: string): number {
+  return indexOf(palId)
+}
+
+/** Index-based breed() for hot loops. */
+export function breedByIndex(ia: number, ib: number, aGender: Gender, bGender: Gender): number {
+  for (const g of gameData.genderSpecific) {
+    if (g.a === ia && g.b === ib && g.aGender === aGender && g.bGender === bGender) return g.child
+    if (g.a === ib && g.b === ia && g.aGender === bGender && g.bGender === aGender) return g.child
+  }
+  return gameData.children[pairIndex(ia, ib)]
+}
+
 export function getPal(palId: string): PalSpecies {
   return gameData.pals[indexOf(palId)]
 }

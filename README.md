@@ -6,7 +6,7 @@ A small offline web app for planning Palworld breeding on an iPad while you play
 
 - **My Pals:** add a Pal in a few taps (species search, gender, up to 4 passives, which player owns it). Filter by name or passive.
 - **Breed:** pick two owned Pals to see the child species, its gender odds, and the chance (and expected egg count) of getting the passives you want.
-- **Planner:** pick a target species to get the fewest-steps breeding route from the Pals you own, including unique and gender-specific combos. It also lists everything you can breed right now.
+- **Planner:** pick a target species and, optionally, up to 4 passives. Without passives it gives the fewest-steps species route. With passives it finds the breeding plan with the fewest expected eggs that ends in that species carrying those passives, step by step, with the odds per egg and a "Mark done" toggle per step. It also lists everything you can breed right now.
 - **Settings:** player names, backup export/import (the iPad share sheet saves to Files or AirDrops it to the other player).
 
 Everything is stored on the device in IndexedDB. Nothing is sent anywhere.
@@ -50,8 +50,18 @@ Safari can clear storage for sites you rarely use. Export a backup from Settings
 
 Passive odds follow PalCalc's model: the child inherits 1 to 4 passives from the parents' combined pool, then 0 to 3 random passives are added, up to 4 in total. The chance of a random passive happening to be one you want is ignored, so the odds shown are slightly pessimistic.
 
+## How the passive planner works
+
+`src/engine/solver.ts` describes every Pal, owned or bred, by species, gender, which wanted passives it has, and how many other passives it has. Owned Pals cost 0 eggs. A bred child costs both parents' plans plus 1/p eggs, where p is the chance per egg of that exact outcome, gender included. A best-first search over these states (Knuth's generalisation of Dijkstra, ordered A*-style by the remaining species steps) returns the cheapest plan. It runs in a Web Worker so the app stays responsive.
+
+- **Quick search** (default) only lets intermediate Pals carry wanted passives with no junk, and lets "bridge" Pals carry at most 2 junk passives. In benchmarks this is 3 to 7 times faster and within 0 to 7% of the thorough result.
+- **Thorough** search drops those limits. It is slower but finds the true cheapest plan under the model.
+- Both stop after a time limit and show the best plan found so far, if any.
+
+Benchmarks: `BENCH=1 npx vitest run src/engine/solver.bench.test.ts --disableConsoleIntercept`.
+
 ## Not built yet
 
-- A full solver that plans species and passives together (e.g. "Anubis with Swift, Legend, Runner, Nimble") across several generations. Right now the Planner routes species only, and the Breed tab gives passive odds for one pairing at a time.
+- Wild Pals as inputs (catching a species you don't own to shorten a route).
 - Live sync between two devices.
 - Importing Pals from a save file.

@@ -30,6 +30,9 @@ export default defineConfig({
       },
     }),
   ],
+  worker: {
+    format: 'es',
+  },
   build: {
     // the bundled breeding table is most of the size; it is precached once
     chunkSizeWarningLimit: 800,

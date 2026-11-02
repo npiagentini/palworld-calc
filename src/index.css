@@ -1,0 +1,342 @@
+:root {
+  --bg: #1b2130;
+  --panel: #252d40;
+  --panel-2: #2f3950;
+  --text: #e8ecf3;
+  --muted: #9aa4b8;
+  --accent: #5eaa8c;
+  --accent-text: #0f1a16;
+  --gold: #e7c15a;
+  --purple: #b48ce6;
+  --bad: #e07a7a;
+  --male: #6aa7ff;
+  --female: #ff8fb8;
+  --radius: 12px;
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 17px;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 16px) 16px 96px;
+}
+
+h2,
+h3 {
+  margin: 20px 0 10px;
+}
+
+label {
+  display: block;
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+input,
+button,
+.button {
+  font: inherit;
+  color: inherit;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-2);
+  background: var(--panel);
+  min-height: 44px;
+  padding: 8px 14px;
+}
+
+input {
+  width: 100%;
+}
+
+button,
+.button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button:disabled {
+  opacity: 0.4;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+button.danger,
+.button.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+a {
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.warn {
+  color: var(--gold);
+}
+
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 32px 0;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar input {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.segmented.small {
+  margin: 10px 0;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+/* lists */
+
+.list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.pal-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+}
+
+.pal-row.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.pal-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.pal-row .owner {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.gender.g-M {
+  color: var(--male);
+}
+
+.gender.g-F {
+  color: var(--female);
+}
+
+/* chips */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.chips.scroll {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--panel-2);
+  border: 1px solid transparent;
+}
+
+.chip.rank-top {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 50%, transparent);
+}
+
+.chip.rank-high {
+  color: var(--purple);
+  border-color: color-mix(in srgb, var(--purple) 50%, transparent);
+}
+
+.chip.rank-bad {
+  color: var(--bad);
+}
+
+button.chip.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* pickers */
+
+.picker-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.picker-list button {
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.picker-list button.selected {
+  color: var(--accent);
+}
+
+.picker-list li.muted {
+  padding: 10px 14px;
+}
+
+.dex {
+  color: var(--muted);
+  font-size: 0.8rem;
+  min-width: 3em;
+}
+
+.picked {
+  width: 100%;
+  justify-content: space-between;
+}
+
+/* results */
+
+.result {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 4px 16px 12px;
+  margin: 12px 0;
+}
+
+.odds {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.odds td {
+  padding: 8px 4px;
+  border-top: 1px solid var(--panel-2);
+}
+
+.odds td:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.steps li,
+.pairs li {
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+.sheet {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 4px 16px 16px;
+}
+
+.sheet input,
+.sheet .picker-list {
+  background: var(--bg);
+}
+
+/* bottom tab bar */
+
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--panel-2);
+}
+
+.tabbar button {
+  flex: 1;
+  max-width: 200px;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+}
+
+.tabbar button.active {
+  color: var(--accent);
+  font-weight: 600;
+}

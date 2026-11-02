@@ -10,7 +10,13 @@ export interface PalSpecies {
   power: number
   maleChance: number
   guaranteedPassives: string[]
+  /** [min, max] level it spawns at in the wild; null if it never does. */
+  wildLevels: [number, number] | null
+  /** Game rarity; LEGENDARY_RARITY and up are legendaries. */
+  rarity: number
 }
+
+export const LEGENDARY_RARITY = 20
 
 export interface PassiveSkill {
   id: string

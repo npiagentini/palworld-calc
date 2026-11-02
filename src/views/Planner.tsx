@@ -4,6 +4,7 @@ import { type OwnedPal, useOwnedPals } from '../db'
 import { parentsOf, type Gender } from '../engine/gameData'
 import { flattenSteps, oneStepChildren, planAll, type OwnedRef, type PlanNode } from '../engine/pathfinder'
 import { genderSymbol, palName } from '../format'
+import { useWildSettings, type WildSettings } from '../settings'
 import { PassivePlan } from './PassivePlan'
 
 function parentLabel(node: PlanNode, byKey: Map<number, OwnedPal>, gender?: Gender): string {
@@ -22,11 +23,74 @@ function neededGender(node: PlanNode, partner: PlanNode, fixed?: Gender): Gender
   return genders.has('M') ? 'F' : 'M'
 }
 
+function WildPanel(props: { wild: WildSettings; onChange: (w: WildSettings) => void }) {
+  const { wild, onChange } = props
+  return (
+    <div className="wild-panel">
+      <div className="segmented small">
+        <button type="button" className={wild.enabled ? 'active' : ''} onClick={() => onChange({ ...wild, enabled: true })}>
+          Use wild catches
+        </button>
+        <button type="button" className={wild.enabled ? '' : 'active'} onClick={() => onChange({ ...wild, enabled: false })}>
+          Owned pals only
+        </button>
+      </div>
+      {wild.enabled && (
+        <div className="wild-fields">
+          <label>
+            One catch is worth
+            <span className="stepper">
+              <button type="button" onClick={() => onChange({ ...wild, catchCost: Math.max(1, wild.catchCost - 1) })}>
+                -
+              </button>
+              <strong>{wild.catchCost}</strong>
+              <button type="button" onClick={() => onChange({ ...wild, catchCost: Math.min(50, wild.catchCost + 1) })}>
+                +
+              </button>
+            </span>
+            eggs
+          </label>
+          <label>
+            Highest wild level I can reach
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={99}
+              placeholder="no limit"
+              value={wild.maxLevel ?? ''}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                onChange({ ...wild, maxLevel: Number.isFinite(v) && v > 0 ? v : undefined })
+              }}
+            />
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              className="check"
+              checked={!!wild.includeLegendaries}
+              onChange={(e) => onChange({ ...wild, includeLegendaries: e.target.checked })}
+            />
+            Include legendaries
+          </label>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Breeding routes from what you own to a target Pal, optionally with passives. */
 export function Planner() {
   const pals = useOwnedPals()
   const [target, setTarget] = useState<string>()
   const [passives, setPassives] = useState<string[]>([])
+  const [wild, setWild] = useWildSettings()
+  const wildOptions = wild.enabled
+    ? { catchCost: wild.catchCost, maxLevel: wild.maxLevel, includeLegendaries: wild.includeLegendaries }
+    : undefined
+  // the egg-cost solver handles passives and catches; the instant species router handles neither
+  const useSolver = passives.length > 0 || wild.enabled
 
   const refs: OwnedRef[] = useMemo(() => pals.map((p) => ({ key: p.id, palId: p.palId, gender: p.gender })), [pals])
   const byKey = useMemo(() => new Map(pals.map((p) => [p.id, p])), [pals])
@@ -43,9 +107,11 @@ export function Planner() {
       <label>Passives it should have (optional, up to 4)</label>
       <PassivePicker value={passives} onChange={setPassives} />
 
-      {target && passives.length > 0 && <PassivePlan target={target} passives={passives} pals={pals} byKey={byKey} />}
+      <WildPanel wild={wild} onChange={setWild} />
 
-      {target && passives.length === 0 && !plan && (
+      {target && useSolver && <PassivePlan target={target} passives={passives} pals={pals} byKey={byKey} wild={wildOptions} />}
+
+      {target && !useSolver && !plan && (
         <div className="result">
           <p className="warn">You can't reach {palName(target)} from your current pals.</p>
           <p className="muted">These pairs produce it. Catching one of these parents is a good start:</p>
@@ -63,9 +129,9 @@ export function Planner() {
         </div>
       )}
 
-      {passives.length === 0 && plan && plan.kind === 'owned' && <p className="result">You already own a {palName(plan.palId)}.</p>}
+      {!useSolver && plan && plan.kind === 'owned' && <p className="result">You already own a {palName(plan.palId)}.</p>}
 
-      {passives.length === 0 && plan && steps.length > 0 && (
+      {!useSolver && plan && steps.length > 0 && (
         <div className="result">
           <h3>
             {palName(target!)} in {steps.length} breeding step{steps.length === 1 ? '' : 's'}
@@ -84,7 +150,7 @@ export function Planner() {
             ))}
           </ol>
           <p className="muted">
-            Species route only. Add passives above to plan for those too.
+            Fewest breeding steps from pals you own. Add passives or turn on wild catches for an egg-cost plan.
           </p>
         </div>
       )}

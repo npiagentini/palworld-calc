@@ -1,4 +1,4 @@
-import { breedByIndex, gameData, palIndexOf, type Gender } from './gameData'
+import { breedByIndex, gameData, LEGENDARY_RARITY, palIndexOf, type Gender } from './gameData'
 import { inheritTable, MAX_PASSIVES, MAX_POOL } from './passives'
 
 export interface SolverPal {
@@ -27,9 +27,33 @@ export interface SolveRequest {
   maxBridgeExtra?: number
   /** Give up after this many milliseconds and return the best plan so far. */
   timeLimitMs?: number
+  /** Allow catching wild pals as extra starting points. */
+  wild?: WildOptions
+}
+
+export interface WildOptions {
+  /** Effort of one catch, in eggs. */
+  catchCost: number
+  /** Only species whose lowest wild level is at or below this. */
+  maxLevel?: number
+  /** Legendaries are boss fights, not routine catches, so they are off unless asked for. */
+  includeLegendaries?: boolean
 }
 
 export type SolveNode =
+  | {
+      kind: 'wild'
+      palId: string
+      /** undefined when either gender will do (only when the final pal is a catch). */
+      gender?: Gender
+      /** Wanted passives the species always spawns with. */
+      passives: string[]
+      extra: number
+      /** Expected catches to get the needed gender. */
+      catches: number
+      /** catches x catch cost, in eggs. */
+      totalEggs: number
+    }
   | {
       kind: 'owned'
       key: number
@@ -210,6 +234,7 @@ export function solve(req: SolveRequest): SolveResult {
   const parentB = new Int32Array(total).fill(-1)
   const stepP = new Float64Array(total)
   const ownedBy = new Map<number, SolverPal>()
+  const wildSeeds = new Set<number>()
   const done = new Uint8Array(total)
   const heap = new Heap()
   const encode = (sp: number, g: number, mask: number, extra: number) => ((sp * GENDERS + g) * MASKS + mask) * EXTRAS + extra
@@ -238,6 +263,38 @@ export function solve(req: SolveRequest): SolveResult {
     heap.push(id, h[sp])
     if (sp === target && mask === fullMask && extra <= maxExtra && (!req.targetGender || req.targetGender === o.gender)) {
       return result('found', id)
+    }
+  }
+
+  if (req.wild) {
+    const { catchCost, maxLevel, includeLegendaries } = req.wild
+    for (let sp = 0; sp < n; sp++) {
+      const levels = pals[sp].wildLevels
+      if (!levels || (maxLevel !== undefined && levels[0] > maxLevel)) continue
+      if (!includeLegendaries && pals[sp].rarity >= LEGENDARY_RARITY) continue
+      // passives the species always spawns with come along with the catch
+      const guaranteed = new Set(pals[sp].guaranteedPassives)
+      let mask = 0
+      for (const p of guaranteed) mask |= bit.get(p) ?? 0
+      const extra = Math.min(guaranteed.size - BITS[mask], MAX_PASSIVES)
+      const seed = (g: number, chance: number) => {
+        if (chance <= 0) return
+        const id = encode(sp, g, mask, extra)
+        const cost = catchCost / chance
+        if (cost >= best[id]) return
+        best[id] = cost
+        stepP[id] = chance
+        wildSeeds.add(id)
+        heap.push(id, cost + (g === ANY ? 0 : h[sp]))
+        if (g === ANY && cost < bound) {
+          bound = cost
+          boundId = id
+        }
+      }
+      seed(0, male[sp])
+      seed(1, female[sp])
+      // the final pal itself might just be a catch
+      if (sp === target && mask === fullMask && extra <= maxExtra) seed(ANY, finalChance[sp])
     }
   }
 
@@ -350,10 +407,15 @@ export function solve(req: SolveRequest): SolveResult {
     if (owned && best[id] === 0) {
       return { kind: 'owned', key: owned.key, palId: owned.palId, gender: owned.gender, passives, extra }
     }
+    const gender = g === 0 ? 'M' : g === 1 ? 'F' : req.targetGender
+    // still a wild seed unless breeding later found a cheaper way to this state
+    if (wildSeeds.has(id) && parentA[id] < 0) {
+      return { kind: 'wild', palId: pals[sp].id, gender, passives, extra, catches: 1 / stepP[id], totalEggs: best[id] }
+    }
     return {
       kind: 'bred',
       palId: pals[sp].id,
-      gender: g === 0 ? 'M' : g === 1 ? 'F' : req.targetGender,
+      gender,
       passives,
       extra,
       parents: [build(parentA[id]), build(parentB[id])],
@@ -371,7 +433,7 @@ export interface SolveStep {
 
 /** Breeding steps in the order you would do them (parents before children). */
 export function solveSteps(node: SolveNode, seen = new Set<string>()): SolveStep[] {
-  if (node.kind === 'owned') return []
+  if (node.kind !== 'bred') return []
   const key = `${node.palId}|${node.gender}|${node.passives.join()}|${node.extra}`
   if (seen.has(key)) return []
   seen.add(key)

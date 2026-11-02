@@ -396,3 +396,76 @@ button.chip.active {
   justify-content: space-between;
   gap: 8px;
 }
+
+/* wild catches */
+
+.wild-panel {
+  margin-top: 16px;
+}
+
+.wild-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+}
+
+.wild-fields label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  color: var(--text);
+}
+
+.wild-fields input {
+  width: 110px;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper button {
+  min-width: 44px;
+  justify-content: center;
+}
+
+.stepper strong {
+  min-width: 2ch;
+  text-align: center;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--gold);
+  color: var(--accent-text);
+  vertical-align: middle;
+}
+
+.catch-list {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.catch-list ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.catch-list li {
+  margin: 6px 0;
+}
+
+input.check {
+  width: 24px;
+  min-height: 24px;
+  accent-color: var(--accent);
+}

@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
 import { gameData, type Gender } from './gameData'
-import { solve, solveSteps, type SolveRequest, type SolverPal } from './solver'
+import { solve, solveSteps, type SolveNode, type SolveRequest, type SolverPal } from './solver'
 
 // Rough timings on realistic inventories. Run with:
 //   BENCH=1 npx vitest run src/engine/solver.bench.test.ts --disableConsoleIntercept
@@ -33,6 +33,8 @@ const cases: [string, number, string, string[], [string, Gender, string[]][]][] 
 const configs: [string, Partial<SolveRequest>][] = [
   ['default', {}],
   ['thorough', { maxCarrierExtra: 4, maxBridgeExtra: 4, timeLimitMs: 120_000 }],
+  ['wild, 3 eggs/catch', { wild: { catchCost: 3 } }],
+  ['wild, 3 eggs/catch, level 30', { wild: { catchCost: 3, maxLevel: 30 } }],
 ]
 
 describe.skipIf(!(globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.BENCH)('solver bench', () => {
@@ -43,6 +45,8 @@ describe.skipIf(!(globalThis as { process?: { env: Record<string, string | undef
         const r = solve({ owned, target: pid(target), passives: passives.map(sid), maxExtra: 0, ...cfg })
         const steps = r.plan ? solveSteps(r.plan).length : 0
         const eggs = r.plan?.kind === 'bred' ? r.plan.totalEggs.toFixed(1) : '-'
-        console.log(`${label} (${cfgName}): ${r.status} in ${r.ms} ms, ${r.statesExplored} states, ${steps} steps, ${eggs} eggs`)
+        const catches = (n: SolveNode): number => (n.kind === 'wild' ? 1 : n.kind === 'bred' ? catches(n.parents[0]) + catches(n.parents[1]) : 0)
+        const c = r.plan ? catches(r.plan) : 0
+        console.log(`${label} (${cfgName}): ${r.status} in ${r.ms} ms, ${r.statesExplored} states, ${steps} steps, ${c} catches, ${eggs} eggs`)
       }, 300_000)
 })

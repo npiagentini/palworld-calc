@@ -36,7 +36,7 @@ function checkPlan(node: SolveNode, wanted: string[], owned: SolverPal[]) {
     expect(step.node.probability).toBeCloseTo(expected, 9)
   }
   // owned leaves really are owned pals with matching passives
-  const leaves = (n: SolveNode): SolveNode[] => (n.kind === 'owned' ? [n] : n.parents.flatMap(leaves))
+  const leaves = (n: SolveNode): SolveNode[] => (n.kind === 'bred' ? n.parents.flatMap(leaves) : [n])
   for (const leaf of leaves(node)) {
     if (leaf.kind !== 'owned') continue
     const o = owned.find((x) => x.key === leaf.key)!
@@ -112,6 +112,85 @@ describe('solve', () => {
     expect([...plan.passives].sort()).toEqual([...wanted].sort())
     expect(plan.extra).toBe(0)
     checkPlan(plan, wanted, owned)
+  })
+
+  describe('wild catches', () => {
+    const wildLeaves = (n: SolveNode): Extract<SolveNode, { kind: 'wild' }>[] =>
+      n.kind === 'wild' ? [n] : n.kind === 'bred' ? n.parents.flatMap(wildLeaves) : []
+
+    it('make an unbreedable species reachable by catching it', () => {
+      const owned = [pal('Lamball', 'M'), pal('Cattiva', 'F')]
+      const r = solve({ owned, target: pid('Jetragon'), passives: [], maxExtra: 4, wild: { catchCost: 3, includeLegendaries: true } })
+      expect(r.status).toBe('found')
+      if (r.plan?.kind !== 'wild') throw new Error('expected a wild catch')
+      // either gender is fine, so a single catch
+      expect(r.plan.totalEggs).toBeCloseTo(3)
+    })
+
+    it('respect the level cap', () => {
+      const owned = [pal('Lamball', 'M'), pal('Cattiva', 'F')]
+      const jetragonMin = getPal(pid('Jetragon')).wildLevels![0]
+      const r = solve({
+        owned,
+        target: pid('Jetragon'),
+        passives: [],
+        maxExtra: 4,
+        wild: { catchCost: 3, maxLevel: jetragonMin - 1, includeLegendaries: true },
+      })
+      expect(r.status).toBe('unreachable')
+    })
+
+    it('never suggest species above the level cap or that do not spawn', () => {
+      const owned = [pal('Lamball', 'M', ['Swift']), pal('Cattiva', 'F', ['Legend'])]
+      const r = solve({ owned, target: pid('Anubis'), passives: [sid('Swift'), sid('Legend')], maxExtra: 0, wild: { catchCost: 3, maxLevel: 20 } })
+      expect(r.status).toBe('found')
+      for (const w of wildLeaves(r.plan!)) {
+        const levels = getPal(w.palId).wildLevels
+        expect(levels).not.toBeNull()
+        expect(levels![0]).toBeLessThanOrEqual(20)
+      }
+    })
+
+    it('leave legendaries out unless asked', () => {
+      const owned = [pal('Lamball', 'M'), pal('Cattiva', 'F')]
+      expect(solve({ owned, target: pid('Jetragon'), passives: [], maxExtra: 4, wild: { catchCost: 3 } }).status).toBe('unreachable')
+      const legendOwned = [pal('Lamball', 'M', ['Swift']), pal('Cattiva', 'F')]
+      const r = solve({ owned: legendOwned, target: pid('Anubis'), passives: [sid('Swift'), sid('Legend')], maxExtra: 0, wild: { catchCost: 3 } })
+      // only legendaries spawn with Legend, so without them it can't be done
+      expect(r.status).toBe('unreachable')
+    })
+
+    it('price a catch by the gender needed', () => {
+      const owned = [pal('Lamball', 'M', ['Swift']), pal('Cattiva', 'F', ['Legend'])]
+      const r = solve({ owned, target: pid('Anubis'), passives: [sid('Swift'), sid('Legend')], maxExtra: 0, wild: { catchCost: 3 } })
+      const wild = wildLeaves(r.plan!)
+      expect(wild.length).toBeGreaterThan(0)
+      for (const w of wild) {
+        const male = getPal(w.palId).maleChance
+        const chance = w.gender === 'M' ? male : w.gender === 'F' ? 1 - male : 1
+        expect(w.catches).toBeCloseTo(1 / chance)
+        expect(w.totalEggs).toBeCloseTo(3 / chance)
+      }
+      checkPlan(r.plan!, [sid('Swift'), sid('Legend')], owned)
+    })
+
+    it('shorten plans compared to owned pals only', () => {
+      const owned = [pal('Lamball', 'M', ['Swift']), pal('Cattiva', 'F', ['Legend']), pal('Foxparks', 'F'), pal('Pengullet', 'M')]
+      const req = { owned, target: pid('Anubis'), passives: [sid('Swift'), sid('Legend')], maxExtra: 0 }
+      const without = solve(req)
+      const withWild = solve({ ...req, wild: { catchCost: 3 } })
+      if (without.plan?.kind !== 'bred' || withWild.plan?.kind !== 'bred') throw new Error('expected bred plans')
+      expect(withWild.plan.totalEggs).toBeLessThan(without.plan.totalEggs)
+    })
+
+    it('include guaranteed passives on the catch', () => {
+      const withGuaranteed = gameData.pals.find((p) => p.wildLevels && p.guaranteedPassives.some((g) => gameData.passives.some((x) => x.id === g)))
+      if (!withGuaranteed) return
+      const passive = withGuaranteed.guaranteedPassives.find((g) => gameData.passives.some((x) => x.id === g))!
+      const r = solve({ owned: [], target: withGuaranteed.id, passives: [passive], maxExtra: 4, wild: { catchCost: 3, includeLegendaries: true } })
+      expect(r.plan?.kind).toBe('wild')
+      expect(r.plan?.passives).toEqual([passive])
+    })
   })
 
   it('thorough search is never worse than the default', () => {

@@ -24,3 +24,36 @@ export function useOwners(): [string[], (owners: string[]) => void] {
   }, [])
   return [owners, save]
 }
+
+const WILD_KEY = 'palworld-calc.wild'
+
+export interface WildSettings {
+  enabled: boolean
+  /** Effort of one catch, in eggs. */
+  catchCost: number
+  /** Highest wild level you can reach; undefined for no limit. */
+  maxLevel?: number
+  includeLegendaries?: boolean
+}
+
+const DEFAULT_WILD: WildSettings = { enabled: true, catchCost: 3 }
+
+function readWild(): WildSettings {
+  try {
+    const v = JSON.parse(localStorage.getItem(WILD_KEY) ?? 'null')
+    if (v && typeof v.catchCost === 'number') return { ...DEFAULT_WILD, ...v }
+  } catch {
+    // fall through to defaults
+  }
+  return DEFAULT_WILD
+}
+
+/** Wild-catch planning settings, stored per device. */
+export function useWildSettings(): [WildSettings, (s: WildSettings) => void] {
+  const [wild, setWild] = useState(readWild)
+  const save = useCallback((next: WildSettings) => {
+    localStorage.setItem(WILD_KEY, JSON.stringify(next))
+    setWild(next)
+  }, [])
+  return [wild, save]
+}

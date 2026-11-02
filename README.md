@@ -6,7 +6,7 @@ A small offline web app for planning Palworld breeding on an iPad while you play
 
 - **My Pals:** add a Pal in a few taps (species search, gender, up to 4 passives, which player owns it). Filter by name or passive.
 - **Breed:** pick two owned Pals to see the child species, its gender odds, and the chance (and expected egg count) of getting the passives you want.
-- **Planner:** pick a target species and, optionally, up to 4 passives. Without passives it gives the fewest-steps species route. With passives it finds the breeding plan with the fewest expected eggs that ends in that species carrying those passives, step by step, with the odds per egg and a "Mark done" toggle per step. It also lists everything you can breed right now.
+- **Planner:** pick a target species and, optionally, up to 4 passives. Without passives it gives the fewest-steps species route. With passives it finds the breeding plan with the fewest expected eggs that ends in that species carrying those passives, step by step, with the odds per egg and a "Mark done" toggle per step. Wild catches can be part of the plan (see below). It also lists everything you can breed right now.
 - **Settings:** player names, backup export/import (the iPad share sheet saves to Files or AirDrops it to the other player).
 
 Everything is stored on the device in IndexedDB. Nothing is sent anywhere.
@@ -58,10 +58,9 @@ Passive odds follow PalCalc's model: the child inherits 1 to 4 passives from the
 - **Thorough** search drops those limits. It is slower but finds the true cheapest plan under the model.
 - Both stop after a time limit and show the best plan found so far, if any.
 
+**Wild catches** (on by default) let the planner start from Pals you catch instead of breed. A catch costs your "one catch is worth N eggs" setting (default 3) divided by the chance of the gender needed, so a female of a 60% male species costs 3 / 0.4 = 7.5 eggs. Species only qualify if they spawn in the wild at or below your "highest wild level" setting. Legendaries are left out unless you tick "Include legendaries". Passives a species always spawns with come with the catch; otherwise a catch is assumed to have no passives. Plans list what to catch first and mark catch steps with a Catch badge.
+
 Benchmarks: `BENCH=1 npx vitest run src/engine/solver.bench.test.ts --disableConsoleIntercept`.
 
-## Not built yet
-
-- Wild Pals as inputs (catching a species you don't own to shorten a route).
 - Live sync between two devices.
 - Importing Pals from a save file.

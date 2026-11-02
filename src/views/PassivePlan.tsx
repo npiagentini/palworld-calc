@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { PassiveChip } from '../components/Pickers'
 import type { OwnedPal } from '../db'
-import type { Gender } from '../engine/gameData'
+import { gameData, getPal, LEGENDARY_RARITY, type Gender } from '../engine/gameData'
 import { solveInWorker, type SolveJob } from '../engine/solveAsync'
-import { solveSteps, type SolveNode, type SolveResult } from '../engine/solver'
+import { solveSteps, type SolveNode, type SolveResult, type WildOptions } from '../engine/solver'
 import { genderSymbol, palName, percent } from '../format'
 
 interface Options {
@@ -20,17 +20,69 @@ function nodeKey(n: SolveNode): string {
   return `${n.palId}|${n.gender}|${n.passives.join()}|${n.extra}`
 }
 
-function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? '' : 's'}`
+function plural(n: number, word: string, many = `${word}s`): string {
+  return `${n} ${n === 1 ? word : many}`
 }
 
 function article(name: string): string {
   return /^[aeiou]/i.test(name) ? 'an' : 'a'
 }
 
+function wildLevelText(palId: string): string {
+  const levels = getPal(palId).wildLevels
+  if (!levels) return ''
+  return levels[0] === levels[1] ? `Lv ${levels[0]}` : `Lv ${levels[0]}-${levels[1]}`
+}
+
+type WildNode = Extract<SolveNode, { kind: 'wild' }>
+
+function wildLeaves(n: SolveNode): WildNode[] {
+  return n.kind === 'wild' ? [n] : n.kind === 'bred' ? n.parents.flatMap(wildLeaves) : []
+}
+
+/** What to catch before you start, merged by species and gender. */
+function CatchList(props: { plan: SolveNode }) {
+  const merged = new Map<string, WildNode>()
+  for (const w of wildLeaves(props.plan)) merged.set(`${w.palId}|${w.gender}`, w)
+  if (merged.size === 0) return null
+  return (
+    <div className="catch-list">
+      <strong>Catch first</strong>
+      <ul>
+        {[...merged.values()].map((w) => (
+          <li key={`${w.palId}|${w.gender}`}>
+            <span className="badge">Catch</span> {palName(w.palId)}
+            {w.gender ? ` ${genderSymbol(w.gender)}` : ''} <span className="muted">{wildLevelText(w.palId)}</span>
+            {w.catches > 1.05 && <span className="muted">, about {eggCount(w.catches)} catches for the gender</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function ParentCell(props: { node: SolveNode; byKey: Map<number, OwnedPal>; stepOf: Map<string, number> }) {
   const { node } = props
   const g = node.gender ? ` ${genderSymbol(node.gender)}` : ''
+  if (node.kind === 'wild') {
+    return (
+      <div className="plan-pal">
+        <div>
+          <span className="badge">Catch</span>{' '}
+          <strong>
+            {palName(node.palId)}
+            {g}
+          </strong>{' '}
+          <span className="muted">wild, {wildLevelText(node.palId)}</span>
+        </div>
+        <div className="chips">
+          {node.passives.map((p) => (
+            <PassiveChip key={p} id={p} />
+          ))}
+        </div>
+      </div>
+    )
+  }
   if (node.kind === 'owned') {
     const owned = props.byKey.get(node.key)
     return (
@@ -85,17 +137,32 @@ function PlanView(props: { plan: SolveNode; byKey: Map<number, OwnedPal> }) {
     const owned = props.byKey.get(plan.key)
     return (
       <p className="result">
-        {owned?.owner ?? 'You'} already {owned?.owner ? 'has' : 'have'} a {palName(plan.palId)} with these passives.
+        {owned?.owner ?? 'You'} already {owned?.owner ? 'has' : 'have'} {article(palName(plan.palId))} {palName(plan.palId)} that fits.
       </p>
+    )
+  }
+  if (plan.kind === 'wild') {
+    return (
+      <div className="result">
+        <h3>Just catch one</h3>
+        <p>
+          <span className="badge">Catch</span> {palName(plan.palId)}
+          {plan.gender ? ` ${genderSymbol(plan.gender)}` : ''} in the wild ({wildLevelText(plan.palId)}). That beats breeding it.
+        </p>
+      </div>
     )
   }
   const steps = solveSteps(plan)
   const stepOf = new Map(steps.map((s, i) => [nodeKey(s.node), i + 1]))
+  const catchCount = new Set(wildLeaves(plan).map((w) => `${w.palId}|${w.gender}`)).size
   return (
     <div className="result">
       <h3>
-        {steps.length} step{steps.length === 1 ? '' : 's'}, about {eggCount(plan.totalEggs)} eggs in total
+        {plural(steps.length, 'breeding step')}
+        {catchCount > 0 ? ` and ${plural(catchCount, 'catch', 'catches')}` : ''}, about {eggCount(plan.totalEggs)} eggs of
+        effort
       </h3>
+      <CatchList plan={plan} />
       <ol className="plan-steps">
         {steps.map((s, i) => {
           const isFinal = i === steps.length - 1
@@ -145,13 +212,20 @@ function PlanView(props: { plan: SolveNode; byKey: Map<number, OwnedPal> }) {
       <p className="muted">
         Egg counts are averages: keep hatching from the same pair until the result matches. Parents are not used up, so a pal can
         appear in more than one step.
+        {catchCount > 0 && ' Catches are counted at your eggs-per-catch setting.'}
       </p>
     </div>
   )
 }
 
 /** Runs the species + passives solver for a target and shows the plan. */
-export function PassivePlan(props: { target: string; passives: string[]; pals: OwnedPal[]; byKey: Map<number, OwnedPal> }) {
+export function PassivePlan(props: {
+  target: string
+  passives: string[]
+  pals: OwnedPal[]
+  byKey: Map<number, OwnedPal>
+  wild?: WildOptions
+}) {
   const [options, setOptions] = useState<Options>({ allowExtra: false, thorough: false })
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<SolveResult>()
@@ -159,7 +233,13 @@ export function PassivePlan(props: { target: string; passives: string[]; pals: O
   const job = useRef<SolveJob>(undefined)
 
   // a new question invalidates the old answer
-  const signature = JSON.stringify([props.target, props.passives, options, props.pals.map((p) => [p.id, p.palId, p.gender, p.passives])])
+  const signature = JSON.stringify([
+    props.target,
+    props.passives,
+    options,
+    props.wild,
+    props.pals.map((p) => [p.id, p.palId, p.gender, p.passives]),
+  ])
   const [answeredFor, setAnsweredFor] = useState('')
   const stale = answeredFor !== signature
 
@@ -175,7 +255,9 @@ export function PassivePlan(props: { target: string; passives: string[]; pals: O
       target: props.target,
       passives: props.passives,
       targetGender: options.targetGender,
-      maxExtra: options.allowExtra ? 4 : 0,
+      // with no wanted passives, any passives on the final pal are fine
+      maxExtra: options.allowExtra || props.passives.length === 0 ? 4 : 0,
+      wild: props.wild,
       ...(options.thorough ? { maxCarrierExtra: 4, maxBridgeExtra: 4, timeLimitMs: 90_000 } : { timeLimitMs: 20_000 }),
     })
     job.current = j
@@ -198,7 +280,17 @@ export function PassivePlan(props: { target: string; passives: string[]; pals: O
     setRunning(false)
   }
 
-  const missing = props.passives.filter((p) => !props.pals.some((o) => o.passives.includes(p)))
+  // a wanted passive must come from an owned pal, or a catchable species that always has it
+  const wildHas = (p: string) =>
+    !!props.wild &&
+    gameData.pals.some(
+      (s) =>
+        s.wildLevels &&
+        (props.wild!.maxLevel === undefined || s.wildLevels[0] <= props.wild!.maxLevel) &&
+        (props.wild!.includeLegendaries || s.rarity < LEGENDARY_RARITY) &&
+        s.guaranteedPassives.includes(p),
+    )
+  const missing = props.passives.filter((p) => !props.pals.some((o) => o.passives.includes(p)) && !wildHas(p))
 
   return (
     <div>
@@ -215,7 +307,7 @@ export function PassivePlan(props: { target: string; passives: string[]; pals: O
           </button>
         ))}
       </div>
-      <div className="segmented small">
+      {props.passives.length > 0 && <div className="segmented small">
         <button
           type="button"
           className={options.allowExtra ? '' : 'active'}
@@ -230,7 +322,7 @@ export function PassivePlan(props: { target: string; passives: string[]; pals: O
         >
           Extras are fine
         </button>
-      </div>
+      </div>}
       <div className="segmented small">
         <button type="button" className={options.thorough ? '' : 'active'} onClick={() => setOptions((o) => ({ ...o, thorough: false }))}>
           Quick search
@@ -252,7 +344,7 @@ export function PassivePlan(props: { target: string; passives: string[]; pals: O
 
       <div className="actions">
         <button type="button" className="primary" disabled={running || missing.length > 0} onClick={run}>
-          {running ? 'Searching...' : 'Find breeding plan'}
+          {running ? 'Searching...' : props.passives.length > 0 ? 'Find breeding plan' : 'Find route'}
         </button>
         {running && (
           <button type="button" onClick={cancel}>
@@ -264,7 +356,13 @@ export function PassivePlan(props: { target: string; passives: string[]; pals: O
       {error && <p className="warn">Search failed: {error}</p>}
       {result && stale && !running && <p className="muted">Inputs changed since this plan was made. Search again to update it.</p>}
       {result?.status === 'unreachable' && (
-        <p className="result warn">No plan reaches {palName(props.target)} with these passives from your current pals.</p>
+        <p className="result warn">
+          No plan reaches {palName(props.target)}
+          {props.passives.length > 0 ? ' with these passives' : ''} from your current pals
+          {props.wild ? ' and catchable species' : ''}.
+          {!props.wild && ' Turning on wild catches may help.'}
+          {props.wild?.maxLevel !== undefined && ' Raising the level cap may help.'}
+        </p>
       )}
       {result?.status === 'timeout' && (
         <p className="result warn">The search ran out of time before finding a plan. Try fewer passives or the quick search.</p>

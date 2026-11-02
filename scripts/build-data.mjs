@@ -40,6 +40,10 @@ const pals = db.Pals.map((p) => ({
   power: p.BreedingPower,
   maleChance: db.BreedingGenderProbability[p.InternalName]?.MALE ?? 0.5,
   guaranteedPassives: p.GuaranteedPassivesInternalIds,
+  // [min, max] wild level, or null for species that never spawn in the wild
+  wildLevels: p.MinWildLevel == null ? null : [p.MinWildLevel, p.MaxWildLevel],
+  // game rarity; 20 marks the legendaries
+  rarity: p.Rarity,
 })).sort((a, b) => a.dex - b.dex || Number(a.variant) - Number(b.variant) || a.name.localeCompare(b.name))
 
 const palIndex = new Map(pals.map((p, i) => [p.id, i]))

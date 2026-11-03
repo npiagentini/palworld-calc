@@ -469,3 +469,17 @@ input.check {
   min-height: 24px;
   accent-color: var(--accent);
 }
+
+.passive-groups {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+
+.group-label {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}

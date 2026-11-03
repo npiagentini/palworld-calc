@@ -62,5 +62,7 @@ Passive odds follow PalCalc's model: the child inherits 1 to 4 passives from the
 
 Benchmarks: `BENCH=1 npx vitest run src/engine/solver.bench.test.ts --disableConsoleIntercept`.
 
+## Not built yet
+
 - Live sync between two devices.
 - Importing Pals from a save file.

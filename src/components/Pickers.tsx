@@ -86,18 +86,25 @@ export function PassiveChip(props: { id: string; onRemove?: () => void; onClick?
   )
 }
 
-/** Pick up to `max` passives, good ones listed first. */
+const PASSIVE_GROUPS: { label: string; test: (rank: number) => boolean }[] = [
+  { label: 'Best', test: (r) => r >= 4 },
+  { label: 'Good', test: (r) => r === 3 },
+  { label: 'Minor', test: (r) => r >= 0 && r <= 2 },
+  { label: 'Negative', test: (r) => r < 0 },
+]
+
+/** Pick up to `max` passives. Every passive is listed, grouped by tier; search narrows it down. */
 export function PassivePicker(props: { value: string[]; onChange: (ids: string[]) => void; max?: number }) {
   const max = props.max ?? 4
   const [query, setQuery] = useState('')
   const full = props.value.length >= max
 
-  const matches = useMemo(() => {
+  const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const list: PassiveSkill[] = q
-      ? gameData.passives.filter((p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
-      : gameData.passives.filter((p) => p.rank >= 3)
-    return list.filter((p) => !props.value.includes(p.id)).slice(0, MAX_RESULTS)
+    const list: PassiveSkill[] = gameData.passives.filter(
+      (p) => !props.value.includes(p.id) && (!q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)),
+    )
+    return PASSIVE_GROUPS.map((g) => ({ label: g.label, items: list.filter((p) => g.test(p.rank)) })).filter((g) => g.items.length > 0)
   }, [query, props.value])
 
   return (
@@ -112,21 +119,29 @@ export function PassivePicker(props: { value: string[]; onChange: (ids: string[]
         <>
           <input
             type="search"
-            placeholder="Search passives (empty shows the good ones)"
+            placeholder="Search passives by name or effect (e.g. work speed)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <div className="chips scroll">
-            {matches.map((p) => (
-              <PassiveChip
-                key={p.id}
-                id={p.id}
-                onClick={() => {
-                  props.onChange([...props.value, p.id])
-                  setQuery('')
-                }}
-              />
+          <div className="passive-groups">
+            {groups.map((g) => (
+              <div key={g.label}>
+                <div className="group-label">{g.label}</div>
+                <div className="chips">
+                  {g.items.map((p) => (
+                    <PassiveChip
+                      key={p.id}
+                      id={p.id}
+                      onClick={() => {
+                        props.onChange([...props.value, p.id])
+                        setQuery('')
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
+            {groups.length === 0 && <span className="muted">No passive matches "{query}"</span>}
           </div>
         </>
       )}

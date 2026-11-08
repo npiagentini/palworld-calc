@@ -7,7 +7,7 @@ A small offline web app for planning Palworld breeding on an iPad while you play
 - **My Pals:** add a Pal in a few taps (species search, gender, up to 4 passives, which player owns it). Filter by name or passive.
 - **Breed:** pick two owned Pals to see the child species, its gender odds, and the chance (and expected egg count) of getting the passives you want.
 - **Planner:** type or dictate a request like "Anubis with Artisan" or "female anubis with swift, legend and runner" into the search bar (names are matched loosely, typos are fine), or pick a target species and, optionally, up to 4 passives. Without passives it gives the fewest-steps species route. With passives it finds the breeding plan with the fewest expected eggs that ends in that species carrying those passives, step by step, with the odds per egg and a "Mark done" toggle per step. Wild catches can be part of the plan (see below). It also lists everything you can breed right now.
-- **Settings:** player names, backup export/import (the iPad share sheet saves to Files or AirDrops it to the other player).
+- **Settings:** player names, import from PalCalc (below), backup export/import (the iPad share sheet saves to Files or AirDrops it to the other player).
 
 Everything is stored on the device in IndexedDB. Nothing is sent anywhere.
 
@@ -50,6 +50,16 @@ Safari can clear storage for sites you rarely use. Export a backup from Settings
 
 Passive odds follow PalCalc's model: the child inherits 1 to 4 passives from the parents' combined pool, then 0 to 3 random passives are added, up to 4 in total. The chance of a random passive happening to be one you want is ignored, so the odds shown are slightly pessimistic.
 
+## Importing your Pals from the save
+
+[PalCalc](https://github.com/tylercamp/palcalc) (Windows) reads Steam and Game Pass saves. On the PC that hosts the world:
+
+1. Open PalCalc and select the world's save. Exporting with the game closed is safest; Game Pass saves can be mid-sync while playing.
+2. Use **Export Save CSV** to write `Pals.csv`. PalCalc's language must be English so the Pal and passive names match.
+3. Get the file to the iPad (OneDrive, iCloud Drive, email) and pick it under **Settings > Import from PalCalc**.
+
+The preview shows how many Pals were found, which species or passives the app didn't recognise, and lets you map each owner in the save (players, or a guild for shared base Pals) to a player in the app. That mapping is remembered. Each import replaces the Pals from the previous one, so released or condensed Pals disappear; Pals added by hand are kept. Location and level go onto each Pal.
+
 ## How the passive planner works
 
 `src/engine/solver.ts` describes every Pal, owned or bred, by species, gender, which wanted passives it has, and how many other passives it has. Owned Pals cost 0 eggs. A bred child costs both parents' plans plus 1/p eggs, where p is the chance per egg of that exact outcome, gender included. A best-first search over these states (Knuth's generalisation of Dijkstra, ordered A*-style by the remaining species steps) returns the cheapest plan. It runs in a Web Worker so the app stays responsive.
@@ -65,4 +75,3 @@ Benchmarks: `BENCH=1 npx vitest run src/engine/solver.bench.test.ts --disableCon
 ## Not built yet
 
 - Live sync between two devices.
-- Importing Pals from a save file.

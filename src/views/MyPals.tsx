@@ -63,6 +63,7 @@ export function PalRow(props: { pal: OwnedPal; onClick?: () => void; selected?: 
       <div className="pal-row-head">
         <span className={`gender g-${pal.gender}`}>{genderSymbol(pal.gender)}</span>
         <strong>{palName(pal.palId)}</strong>
+        {pal.level !== undefined && <span className="muted">Lv {pal.level}</span>}
         {pal.nickname && <span className="muted">{pal.nickname}</span>}
         <span className="owner">{pal.owner}</span>
       </div>

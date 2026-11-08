@@ -28,6 +28,9 @@ const cases: [string, number, string, string[], [string, Gender, string[]][]][] 
   ['3 passives', 40, 'Anubis', ['Swift', 'Legend', 'Runner'], [['Lamball', 'M', ['Swift', 'Brittle']], ['Cattiva', 'F', ['Legend']], ['Chikipi', 'M', ['Runner']]]],
   ['4 passives', 60, 'Anubis', ['Swift', 'Legend', 'Runner', 'Nimble'], [['Lamball', 'M', ['Swift']], ['Cattiva', 'F', ['Legend']], ['Chikipi', 'M', ['Runner']], ['Foxparks', 'F', ['Nimble']]]],
   ['4 work passives, 100 pals', 100, 'Jormuntide', ['Artisan', 'Serious', 'Lucky', 'Workaholic'], [['Lamball', 'M', ['Artisan']], ['Cattiva', 'F', ['Serious', 'Lucky']], ['Chikipi', 'M', ['Workaholic']], ['Foxparks', 'F', ['Lucky']]]],
+  // a whole imported save
+  ['2 passives, 400 pals', 400, 'Anubis', ['Swift', 'Legend'], [['Lamball', 'M', ['Swift']], ['Cattiva', 'F', ['Legend']]]],
+  ['4 work passives, 400 pals', 400, 'Jormuntide', ['Artisan', 'Serious', 'Lucky', 'Workaholic'], [['Lamball', 'M', ['Artisan']], ['Cattiva', 'F', ['Serious', 'Lucky']], ['Chikipi', 'M', ['Workaholic']], ['Foxparks', 'F', ['Lucky']]]],
 ]
 
 const configs: [string, Partial<SolveRequest>][] = [

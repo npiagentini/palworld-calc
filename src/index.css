@@ -498,3 +498,18 @@ input.check {
 .query-feedback .chip {
   margin: 0 2px;
 }
+
+select {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--panel-2);
+  border-radius: var(--radius);
+  min-height: 44px;
+  padding: 6px 10px;
+  max-width: 100%;
+}
+
+.import-preview td:first-child {
+  word-break: break-word;
+}

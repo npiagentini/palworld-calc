@@ -25,3 +25,7 @@ dist-ssr
 
 # local tooling
 .claude/
+
+# save exports dropped in for testing; never commit real saves
+/*.csv
+/*.sav

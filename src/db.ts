@@ -11,6 +11,9 @@ export interface OwnedPal {
   owner: string
   notes: string
   createdAt: number
+  level?: number
+  /** Set on pals that came from a save import; a re-import replaces exactly these. */
+  source?: 'palcalc'
 }
 
 export type NewOwnedPal = Omit<OwnedPal, 'id' | 'createdAt'>
@@ -40,6 +43,23 @@ export async function updatePal(id: number, changes: Partial<NewOwnedPal>): Prom
 
 export async function deletePal(id: number): Promise<void> {
   await db.pals.delete(id)
+}
+
+/**
+ * Replaces every previously imported pal with `pals`, leaving pals added by
+ * hand alone. Returns how many were removed and added.
+ */
+export async function replaceImportedPals(pals: NewOwnedPal[]): Promise<{ removed: number; added: number }> {
+  const now = Date.now()
+  return db.transaction('rw', db.pals, async () => {
+    const removed = await db.pals.filter((p) => p.source === 'palcalc').delete()
+    await db.pals.bulkAdd(pals.map((p) => ({ ...p, source: 'palcalc' as const, createdAt: now })) as OwnedPal[])
+    return { removed, added: pals.length }
+  })
+}
+
+export async function countImportedPals(): Promise<number> {
+  return db.pals.filter((p) => p.source === 'palcalc').count()
 }
 
 const BACKUP_FORMAT = 'palworld-calc-backup'

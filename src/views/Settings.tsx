@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { exportBackup, importBackup } from '../db'
 import { gameData } from '../engine/gameData'
+import { PalCalcImport } from './PalCalcImport'
 
 async function shareOrDownload(json: string) {
   const name = `palworld-calc-${new Date().toISOString().slice(0, 10)}.json`
@@ -21,6 +22,10 @@ async function shareOrDownload(json: string) {
 export function Settings(props: { owners: string[]; setOwners: (o: string[]) => void }) {
   const [ownersText, setOwnersText] = useState(props.owners.join(', '))
   const [message, setMessage] = useState('')
+  const setOwners = (o: string[]) => {
+    props.setOwners(o)
+    setOwnersText(o.join(', '))
+  }
 
   const onImport = async (file: File, replace: boolean) => {
     try {
@@ -37,10 +42,12 @@ export function Settings(props: { owners: string[]; setOwners: (o: string[]) => 
       <p className="muted">Comma separated. Used to tag who owns each pal.</p>
       <div className="toolbar">
         <input value={ownersText} onChange={(e) => setOwnersText(e.target.value)} />
-        <button type="button" onClick={() => props.setOwners(ownersText.split(','))}>
+        <button type="button" onClick={() => setOwners(ownersText.split(','))}>
           Save
         </button>
       </div>
+
+      <PalCalcImport owners={props.owners} setOwners={setOwners} />
 
       <h3>Backup and sharing</h3>
       <p className="muted">

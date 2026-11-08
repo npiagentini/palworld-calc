@@ -7,9 +7,10 @@ const MAX_RESULTS = 40
 /** Search-as-you-type species picker. */
 export function PalPicker(props: { value?: string; onChange: (palId: string) => void; placeholder?: string; autoFocus?: boolean }) {
   const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(!props.value)
-  // focus the search when the user re-opens the picker, so the iPad keyboard comes up
-  const [reopened, setReopened] = useState(false)
+  // the value the user tapped "change" on; a new value from outside (e.g. the
+  // planner search bar) closes the list again
+  const [editingFrom, setEditingFrom] = useState<string | null>(null)
+  const editing = !!props.value && editingFrom === props.value
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -19,12 +20,9 @@ export function PalPicker(props: { value?: string; onChange: (palId: string) => 
     return list.slice(0, MAX_RESULTS)
   }, [query])
 
-  if (!open && props.value) {
+  if (props.value && !editing) {
     return (
-      <button type="button" className="picked" onClick={() => {
-          setOpen(true)
-          setReopened(true)
-        }}>
+      <button type="button" className="picked" onClick={() => setEditingFrom(props.value!)}>
         {palName(props.value)} <span className="muted">change</span>
       </button>
     )
@@ -34,7 +32,8 @@ export function PalPicker(props: { value?: string; onChange: (palId: string) => 
     <div className="picker">
       <input
         type="search"
-        autoFocus={props.autoFocus || reopened}
+        // focus when re-opened, so the iPad keyboard comes up
+        autoFocus={props.autoFocus || editing}
         placeholder={props.placeholder ?? 'Search Pal name or Paldeck number'}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -48,7 +47,7 @@ export function PalPicker(props: { value?: string; onChange: (palId: string) => 
               onClick={() => {
                 props.onChange(p.id)
                 setQuery('')
-                setOpen(false)
+                setEditingFrom(null)
               }}
             >
               <span className="dex">#{p.dex}</span> {p.name}

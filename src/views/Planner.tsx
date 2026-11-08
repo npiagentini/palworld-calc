@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { PalPicker, PassivePicker } from '../components/Pickers'
+import { QuerySearch } from '../components/QuerySearch'
 import { type OwnedPal, useOwnedPals } from '../db'
 import { parentsOf, type Gender } from '../engine/gameData'
 import { flattenSteps, oneStepChildren, planAll, type OwnedRef, type PlanNode } from '../engine/pathfinder'
 import { genderSymbol, palName } from '../format'
 import { useWildSettings, type WildSettings } from '../settings'
-import { PassivePlan } from './PassivePlan'
+import { PassivePlan, type RunRequest } from './PassivePlan'
 
 function parentLabel(node: PlanNode, byKey: Map<number, OwnedPal>, gender?: Gender): string {
   const name = palName(node.palId)
@@ -85,6 +86,7 @@ export function Planner() {
   const pals = useOwnedPals()
   const [target, setTarget] = useState<string>()
   const [passives, setPassives] = useState<string[]>([])
+  const [runRequest, setRunRequest] = useState<RunRequest>()
   const [wild, setWild] = useWildSettings()
   const wildOptions = wild.enabled
     ? { catchCost: wild.catchCost, maxLevel: wild.maxLevel, includeLegendaries: wild.includeLegendaries }
@@ -102,6 +104,14 @@ export function Planner() {
 
   return (
     <div>
+      <QuerySearch
+        onSearch={(q) => {
+          if (q.target) setTarget(q.target)
+          setPassives(q.passives)
+          // with a target, go straight to the plan (the species-only route shows by itself)
+          if (q.target && (q.passives.length > 0 || wild.enabled)) setRunRequest({ key: Date.now(), targetGender: q.gender })
+        }}
+      />
       <label>Target Pal</label>
       <PalPicker value={target} onChange={setTarget} placeholder="Which Pal do you want to breed?" />
       <label>Passives it should have (optional, up to 4)</label>
@@ -109,7 +119,9 @@ export function Planner() {
 
       <WildPanel wild={wild} onChange={setWild} />
 
-      {target && useSolver && <PassivePlan target={target} passives={passives} pals={pals} byKey={byKey} wild={wildOptions} />}
+      {target && useSolver && (
+        <PassivePlan target={target} passives={passives} pals={pals} byKey={byKey} wild={wildOptions} runRequest={runRequest} />
+      )}
 
       {target && !useSolver && !plan && (
         <div className="result">

@@ -6,6 +6,11 @@ import { solveInWorker, type SolveJob } from '../engine/solveAsync'
 import { solveSteps, type SolveNode, type SolveResult, type WildOptions } from '../engine/solver'
 import { genderSymbol, palName, percent } from '../format'
 
+export interface RunRequest {
+  key: number
+  targetGender?: Gender
+}
+
 interface Options {
   targetGender?: Gender
   allowExtra: boolean
@@ -225,6 +230,8 @@ export function PassivePlan(props: {
   pals: OwnedPal[]
   byKey: Map<number, OwnedPal>
   wild?: WildOptions
+  /** Set by the search bar: run as soon as this key changes, with this final gender. */
+  runRequest?: RunRequest
 }) {
   const [options, setOptions] = useState<Options>({ allowExtra: false, thorough: false })
   const [running, setRunning] = useState(false)
@@ -233,19 +240,24 @@ export function PassivePlan(props: {
   const job = useRef<SolveJob>(undefined)
 
   // a new question invalidates the old answer
-  const signature = JSON.stringify([
-    props.target,
-    props.passives,
-    options,
-    props.wild,
-    props.pals.map((p) => [p.id, p.palId, p.gender, p.passives]),
-  ])
+  const signatureFor = (opts: Options) =>
+    JSON.stringify([props.target, props.passives, opts, props.wild, props.pals.map((p) => [p.id, p.palId, p.gender, p.passives])])
+  const signature = signatureFor(options)
   const [answeredFor, setAnsweredFor] = useState('')
   const stale = answeredFor !== signature
 
-  useEffect(() => () => job.current?.cancel(), [])
+  // the last search-bar request handled; cleared on unmount so a remount
+  // (React StrictMode does one in development) runs it again
+  const handledRun = useRef<number>(undefined)
+  useEffect(
+    () => () => {
+      job.current?.cancel()
+      handledRun.current = undefined
+    },
+    [],
+  )
 
-  const run = async () => {
+  const run = async (opts: Options = options) => {
     job.current?.cancel()
     setRunning(true)
     setError('')
@@ -254,16 +266,16 @@ export function PassivePlan(props: {
       owned: props.pals.map((p) => ({ key: p.id, palId: p.palId, gender: p.gender, passives: p.passives })),
       target: props.target,
       passives: props.passives,
-      targetGender: options.targetGender,
+      targetGender: opts.targetGender,
       // with no wanted passives, any passives on the final pal are fine
-      maxExtra: options.allowExtra || props.passives.length === 0 ? 4 : 0,
+      maxExtra: opts.allowExtra || props.passives.length === 0 ? 4 : 0,
       wild: props.wild,
-      ...(options.thorough ? { maxCarrierExtra: 4, maxBridgeExtra: 4, timeLimitMs: 90_000 } : { timeLimitMs: 20_000 }),
+      ...(opts.thorough ? { maxCarrierExtra: 4, maxBridgeExtra: 4, timeLimitMs: 90_000 } : { timeLimitMs: 20_000 }),
     })
     job.current = j
     try {
       setResult(await j.promise)
-      setAnsweredFor(signature)
+      setAnsweredFor(signatureFor(opts))
     } catch (e) {
       if ((e as Error).name !== 'AbortError') setError((e as Error).message)
     } finally {
@@ -291,6 +303,19 @@ export function PassivePlan(props: {
         s.guaranteedPassives.includes(p),
     )
   const missing = props.passives.filter((p) => !props.pals.some((o) => o.passives.includes(p)) && !wildHas(p))
+
+  // the search bar asked for a plan: apply its gender and run once per request
+  useEffect(() => {
+    const req = props.runRequest
+    if (!req || handledRun.current === req.key) return
+    handledRun.current = req.key
+    if (missing.length > 0) return
+    const opts = { ...options, targetGender: req.targetGender }
+    setOptions(opts)
+    void run(opts)
+    // run only when a new request arrives, not when other inputs change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.runRequest?.key])
 
   return (
     <div>
@@ -343,7 +368,7 @@ export function PassivePlan(props: {
       )}
 
       <div className="actions">
-        <button type="button" className="primary" disabled={running || missing.length > 0} onClick={run}>
+        <button type="button" className="primary" disabled={running || missing.length > 0} onClick={() => run()}>
           {running ? 'Searching...' : props.passives.length > 0 ? 'Find breeding plan' : 'Find route'}
         </button>
         {running && (

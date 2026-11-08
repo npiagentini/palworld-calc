@@ -483,3 +483,18 @@ input.check {
   letter-spacing: 0.05em;
   color: var(--muted);
 }
+
+/* planner search bar */
+
+.query-search {
+  margin-bottom: 4px;
+}
+
+.query-feedback {
+  margin-top: 8px;
+  line-height: 1.8;
+}
+
+.query-feedback .chip {
+  margin: 0 2px;
+}

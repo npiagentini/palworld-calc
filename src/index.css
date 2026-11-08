@@ -513,3 +513,8 @@ select {
 .import-preview td:first-child {
   word-break: break-word;
 }
+
+.added-note {
+  color: var(--accent);
+  margin: 0 0 8px;
+}

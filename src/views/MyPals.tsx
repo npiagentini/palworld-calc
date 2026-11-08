@@ -8,21 +8,49 @@ function emptyPal(owner: string): NewOwnedPal {
   return { palId: '', gender: 'F', passives: [], nickname: '', owner, notes: '' }
 }
 
-function PalForm(props: { initial: NewOwnedPal; owners: string[]; onSave: (p: NewOwnedPal) => void; onCancel: () => void; onDelete?: () => void }) {
+/** Passives a species always spawns with, used to pre-fill the form. */
+function guaranteedPassives(palId: string): string[] {
+  return getPal(palId).guaranteedPassives.slice(0, 4)
+}
+
+function PalForm(props: {
+  initial: NewOwnedPal
+  owners: string[]
+  onSave: (p: NewOwnedPal) => void
+  onCancel: () => void
+  onDelete?: () => void
+  /** Adds the pal and keeps the form open for another of the same species. */
+  onAddAnother?: (p: NewOwnedPal) => Promise<void>
+}) {
   const [pal, setPal] = useState(props.initial)
+  const [added, setAdded] = useState<string[]>([])
   const set = <K extends keyof NewOwnedPal>(k: K, v: NewOwnedPal[K]) => setPal((p) => ({ ...p, [k]: v }))
+
+  const addAnother = async () => {
+    await props.onAddAnother!(pal)
+    setAdded((a) => [...a, `${palName(pal.palId)} ${genderSymbol(pal.gender)}`])
+    // same species, gender and owner; fresh passives and nickname
+    setPal((p) => ({ ...p, passives: guaranteedPassives(p.palId), nickname: '' }))
+  }
 
   return (
     <div className="sheet">
       <h2>{props.onDelete ? 'Edit Pal' : 'Add Pal'}</h2>
+      {added.length > 0 && (
+        <p className="added-note">
+          Added {added.length}:{' '}
+          {[...added.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map<string, number>())]
+            .map(([label, n]) => (n > 1 ? `${label} x${n}` : label))
+            .join(', ')}
+        </p>
+      )}
       <label>Species</label>
       <PalPicker
         autoFocus={!pal.palId}
         value={pal.palId || undefined}
         onChange={(palId) => {
           // pre-fill passives some species always spawn with
-          const guaranteed = getPal(palId).guaranteedPassives
-          setPal((p) => ({ ...p, palId, passives: p.passives.length === 0 ? guaranteed.slice(0, 4) : p.passives }))
+          setPal((p) => ({ ...p, palId, passives: p.passives.length === 0 ? guaranteedPassives(palId) : p.passives }))
         }}
       />
       <label>Gender</label>
@@ -41,10 +69,15 @@ function PalForm(props: { initial: NewOwnedPal; owners: string[]; onSave: (p: Ne
       <input value={pal.nickname} onChange={(e) => set('nickname', e.target.value)} placeholder="e.g. Base 2 palbox" />
       <div className="actions">
         <button type="button" className="primary" disabled={!pal.palId} onClick={() => props.onSave(pal)}>
-          Save
+          {props.onAddAnother ? 'Save and close' : 'Save'}
         </button>
+        {props.onAddAnother && (
+          <button type="button" className="primary" disabled={!pal.palId} onClick={addAnother}>
+            Save and add another {pal.palId ? palName(pal.palId) : ''}
+          </button>
+        )}
         <button type="button" onClick={props.onCancel}>
-          Cancel
+          {added.length > 0 ? 'Done' : 'Cancel'}
         </button>
         {props.onDelete && (
           <button type="button" className="danger" onClick={props.onDelete}>
@@ -103,6 +136,13 @@ export function MyPals(props: { owners: string[] }) {
         initial={initial}
         owners={props.owners}
         onCancel={() => setEditing(null)}
+        onAddAnother={
+          editing === 'new'
+            ? async (p) => {
+                await addPal(p)
+              }
+            : undefined
+        }
         onSave={async (p) => {
           if (editing === 'new') await addPal(p)
           else await updatePal(editing.id, p)

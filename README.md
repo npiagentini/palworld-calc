@@ -4,7 +4,7 @@ A small offline web app for planning Palworld breeding on an iPad while you play
 
 ## Features
 
-- **My Pals:** add a Pal in a few taps (species search, gender, up to 4 passives, which player owns it). Filter by name or passive.
+- **My Pals:** add a Pal in a few taps (species search, gender, up to 4 passives, which player owns it). "Save and add another" keeps the species, gender and owner for logging several of the same Pal. Filter by name or passive.
 - **Breed:** pick two owned Pals to see the child species, its gender odds, and the chance (and expected egg count) of getting the passives you want.
 - **Planner:** type or dictate a request like "Anubis with Artisan" or "female anubis with swift, legend and runner" into the search bar (names are matched loosely, typos are fine), or pick a target species and, optionally, up to 4 passives. Without passives it gives the fewest-steps species route. With passives it finds the breeding plan with the fewest expected eggs that ends in that species carrying those passives, step by step, with the odds per egg and a "Mark done" toggle per step. Wild catches can be part of the plan (see below). It also lists everything you can breed right now.
 - **Settings:** player names, import from PalCalc (below), backup export/import (the iPad share sheet saves to Files or AirDrops it to the other player).

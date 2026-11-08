@@ -15,6 +15,8 @@ function guaranteedPassives(palId: string): string[] {
 
 function PalForm(props: {
   initial: NewOwnedPal
+  /** Starts the species search with this text. */
+  speciesQuery?: string
   owners: string[]
   onSave: (p: NewOwnedPal) => void
   onCancel: () => void
@@ -47,6 +49,7 @@ function PalForm(props: {
       <label>Species</label>
       <PalPicker
         autoFocus={!pal.palId}
+        initialQuery={props.speciesQuery}
         value={pal.palId || undefined}
         onChange={(palId) => {
           // pre-fill passives some species always spawn with
@@ -134,6 +137,7 @@ export function MyPals(props: { owners: string[] }) {
     return (
       <PalForm
         initial={initial}
+        speciesQuery={editing === 'new' ? filter.trim() : undefined}
         owners={props.owners}
         onCancel={() => setEditing(null)}
         onAddAnother={
@@ -186,6 +190,14 @@ export function MyPals(props: { owners: string[] }) {
           <PalRow key={p.id} pal={p} onClick={() => setEditing(p)} />
         ))}
         {pals.length === 0 && <p className="empty">No pals yet. Add the ones with passives worth passing on.</p>}
+        {pals.length > 0 && shown.length === 0 && filter.trim() && (
+          <div className="empty">
+            <p>No pals match "{filter.trim()}".</p>
+            <button type="button" className="primary" onClick={() => setEditing('new')}>
+              + Add "{filter.trim()}"
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

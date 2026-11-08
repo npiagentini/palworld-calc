@@ -5,8 +5,15 @@ import { genderSymbol, palName, passiveName, rankClass } from '../format'
 const MAX_RESULTS = 40
 
 /** Search-as-you-type species picker. */
-export function PalPicker(props: { value?: string; onChange: (palId: string) => void; placeholder?: string; autoFocus?: boolean }) {
-  const [query, setQuery] = useState('')
+export function PalPicker(props: {
+  value?: string
+  onChange: (palId: string) => void
+  placeholder?: string
+  autoFocus?: boolean
+  /** Text to start the search with, e.g. what was typed in My Pals' filter. */
+  initialQuery?: string
+}) {
+  const [query, setQuery] = useState(props.initialQuery ?? '')
   // the value the user tapped "change" on; a new value from outside (e.g. the
   // planner search bar) closes the list again
   const [editingFrom, setEditingFrom] = useState<string | null>(null)

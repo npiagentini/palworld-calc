@@ -518,3 +518,7 @@ select {
   color: var(--accent);
   margin: 0 0 8px;
 }
+
+.list > .empty {
+  grid-column: 1 / -1;
+}
